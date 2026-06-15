@@ -32,7 +32,7 @@ The system identifies potentially misclassified tickets and generates detailed e
 
 Streamlit Application:
 
-https://supportintegrityauditor-lbwzos36mghad8udekrric.streamlit.app/
+[https://supportintegrityauditor-lbwzos36mghad8udekrric.streamlit.app/](https://supportintegrityauditor-lbwzos36mghad8udekrric.streamlit.app/)
 
 ---
 

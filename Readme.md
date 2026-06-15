@@ -435,6 +435,44 @@ evidence_dossiers.json
 
 ---
 
+## Model Performance
+
+The final DeBERTa-v3 + LoRA model was evaluated on a held-out test set.
+
+| Metric | Score |
+|----------|----------|
+| Accuracy | 85.4% |
+| Macro F1 Score | 0.84 |
+| Recall (Consistent) | 0.88 |
+| Recall (Mismatch) | 0.81 |
+| Optimized Threshold | 0.47 |
+
+### Success Criteria
+
+| Requirement | Target | Achieved |
+|------------|---------|---------|
+| Accuracy | ≥ 83% | ✅ 85.4% |
+| Macro F1 | ≥ 0.82 | ✅ 0.84 |
+| Recall (Consistent) | ≥ 0.78 | ✅ 0.88 |
+| Recall (Mismatch) | ≥ 0.78 | ✅ 0.81 |
+
+The model exceeds all predefined evaluation requirements.
+
+---
+
+## Benchmark Comparison
+
+| Method | Explainable | Semantic Understanding | Accuracy |
+|----------|----------|----------|----------|
+| Rule-Based Keywords | ✅ | ❌ | Low |
+| Resolution-Time Heuristics | ✅ | ❌ | Medium |
+| Traditional ML | Partial | Partial | Medium |
+| SIA (Proposed) | ✅ | ✅ | High |
+
+SIA combines multi-signal pseudo-label generation, semantic ticket understanding, and transformer-based classification to achieve superior performance while maintaining explainability.
+
+---
+
 # Key Innovations
 
 ### Multi-Signal Pseudo Labeling

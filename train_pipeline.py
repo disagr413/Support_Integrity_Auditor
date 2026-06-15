@@ -443,17 +443,14 @@ def main():
 
 def main():
     p = argparse.ArgumentParser()
-
-    # 1. CHANGE: required=True hata kar default location daal di hai
-    # Dhyan dein: Yahan '/content/customer_support_tickets.csv' ki jagah apne data ka sahi path daalein
-    p.add_argument('--data',       default='/content/customer_support_tickets.csv')
+    
+    p.add_argument('--data',       default='/data/customer_support_tickets.csv')
     p.add_argument('--output-dir', default='outputs')
     p.add_argument('--model-dir',  default='models/sia_model')
     p.add_argument('--epochs',     type=int, default=6)
     p.add_argument('--batch-size', type=int, default=16)
     p.add_argument('--skip-stage1', action='store_true')
 
-    # 2. CHANGE: Colab ke liye args=[] likhna zaroori hai
     args = p.parse_args(args=[])
 
     out = Path(args.output_dir); mdl = Path(args.model_dir)

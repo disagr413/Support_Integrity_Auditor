@@ -372,17 +372,14 @@ Each dossier contains:
 
 # Installation
 
-```bash
 git clone [Support_Integrity_Auditor](https://github.com/disagr413/Support_Integrity_Auditor.git)
 
 cd support-integrity-auditor
-```
+
 
 Install dependencies:
 
-```bash
 pip install -r requirements.txt
-```
 
 ---
 
@@ -390,7 +387,6 @@ pip install -r requirements.txt
 
 Run complete training pipeline:
 
-```bash
 python train_pipeline.py
 ```
 

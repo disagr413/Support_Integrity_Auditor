@@ -334,7 +334,8 @@ def make_dossier(row, prob):
     kp = [e for e in ev if e["signal"] == "keyword" and e.get("weight", 0) > 0]
     kn = [e for e in ev if e["signal"] == "keyword" and e.get("weight", 0) < 0]
 
-    s1 = f"This {row['Issue_Category']} ticket via {row.get('Ticket_Channel', 'Unknown')} assigned {row['Priority_Level']} — model infers {inf}."
+    ch = row.get("Ticket_Channel", "Unknown")
+    s1 = f"This {row['Issue_Category']} ticket via {ch} assigned {row['Priority_Level']} — model infers {inf}."
     s2 = (
         f"Escalation indicators ({', '.join(repr(e['value']) for e in kp[:2])}) signal higher severity."
         if mtype == "Hidden Crisis" and kp
@@ -420,7 +421,6 @@ def normalize_source_columns(df):
         rename_map["inferred_sev"] = "inferred_severity"
     if "mismatch_type" in df.columns and "mtype" not in df.columns:
         rename_map["mismatch_type"] = "mtype"
-
     if rename_map:
         df = df.rename(columns=rename_map)
 
@@ -439,7 +439,6 @@ def normalize_source_columns(df):
     return df
 
 
-@st.cache_data(show_spinner="Reading saved outputs…")
 def load_batch_data():
     labeled_path = OUT / "labeled_tickets.csv"
     pred_path = OUT / "predictions.csv"
@@ -450,12 +449,9 @@ def load_batch_data():
     dossiers = []
 
     if labeled_path.exists():
-        labeled = pd.read_csv(labeled_path)
-        labeled = normalize_source_columns(labeled)
-
+        labeled = normalize_source_columns(pd.read_csv(labeled_path))
     if pred_path.exists():
-        preds = pd.read_csv(pred_path)
-        preds = normalize_source_columns(preds)
+        preds = normalize_source_columns(pd.read_csv(pred_path))
 
     if dossiers_path.exists():
         try:
@@ -473,28 +469,25 @@ def load_batch_data():
     if preds is None:
         return labeled, dossiers, "labeled"
 
-    # Merge both sources when available.
+    # Merge predictions into labeled using Ticket_ID as the key.
     batch = labeled.copy()
+    if "Ticket_ID" not in batch.columns or "Ticket_ID" not in preds.columns:
+        return labeled, dossiers, "labeled"
+
     batch["Ticket_ID"] = batch["Ticket_ID"].astype(str)
+    preds = preds.copy()
     preds["Ticket_ID"] = preds["Ticket_ID"].astype(str)
 
-    # Bring in any prediction-only columns.
-    for col in preds.columns:
-        if col not in batch.columns:
-            batch[col] = np.nan
-
+    pred_cols = [c for c in preds.columns if c != "Ticket_ID"]
     pred_map = preds.set_index("Ticket_ID")
-    batch = batch.set_index(batch["Ticket_ID"].astype(str))
 
-    for col in preds.columns:
-        if col == "Ticket_ID":
-            continue
+    for col in pred_cols:
+        mapped = batch["Ticket_ID"].map(pred_map[col].to_dict())
         if col in batch.columns:
-            batch[col] = batch.index.map(pred_map[col].to_dict()).combine_first(batch[col])
+            batch[col] = batch[col].where(batch[col].notna(), mapped)
         else:
-            batch[col] = batch.index.map(pred_map[col].to_dict())
+            batch[col] = mapped
 
-    batch = batch.reset_index(drop=True)
     batch = normalize_source_columns(batch)
     return batch, dossiers, "merged"
 
@@ -746,10 +739,7 @@ with tab2:
             if dossier is None and {"Ticket_Subject", "Ticket_Description"}.issubset(chosen_row.keys()):
                 dossier = make_dossier(chosen_row, chosen_prob)
             elif dossier is None:
-                dossier = {
-                    "ticket_id": chosen_id,
-                    "note": "Evidence dossier not available for this row in the saved JSON."
-                }
+                dossier = {"ticket_id": chosen_id, "note": "Evidence dossier not available for this row in the saved JSON."}
 
             with st.expander("Selected Ticket Evidence Dossier", expanded=True):
                 st.json(dossier)

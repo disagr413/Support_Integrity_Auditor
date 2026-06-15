@@ -15,8 +15,7 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 # ---------------------------
 st.set_page_config(
     page_title="SIA — Support Integrity Auditor",
-    layout="wide",
-    page_icon="🔍",
+    layout="wide"
 )
 
 # ---------------------------

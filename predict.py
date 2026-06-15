@@ -284,7 +284,7 @@ def main():
 def main():
     p = argparse.ArgumentParser()
     
-    p.add_argument('--input',       default='/data/customer_support_tickets.csv')
+    p.add_argument('--input',       default='data/customer_support_tickets.csv')
     p.add_argument('--output',      default='outputs')
     p.add_argument('--model-dir',   default='models/sia_model')
     p.add_argument('--threshold',   type=float, default=None)

@@ -370,24 +370,26 @@ Each dossier contains:
 
 ---
 
-# Installation
+## Installation
 
-git clone [Support_Integrity_Auditor](https://github.com/disagr413/Support_Integrity_Auditor.git)
+### Clone the Repository
 
-cd support-integrity-auditor
+```bash
+git clone https://github.com/<your-username>/Support_Integrity_Auditor.git
+cd Support_Integrity_Auditor
+```
 
+### Install Dependencies
 
-Install dependencies:
-
+```bash
 pip install -r requirements.txt
+```
 
----
+### Launch the Streamlit App
 
-# Training
-
-Run complete training pipeline:
-
-python train_pipeline.py
+```bash
+streamlit run app.py
+```
 ```
 
 Outputs:

@@ -460,14 +460,16 @@ The model exceeds all predefined evaluation requirements.
 
 ---
 
-## Benchmark Comparison
+## Key Capabilities Comparison
 
-| Method | Explainable | Semantic Understanding | Accuracy |
-|----------|----------|----------|----------|
-| Rule-Based Keywords | ✅ | ❌ | Low |
-| Resolution-Time Heuristics | ✅ | ❌ | Medium |
-| Traditional ML | Partial | Partial | Medium |
-| SIA (Proposed) | ✅ | ✅ | High |
+| Capability | Rule-Based | Traditional ML | SIA |
+|------------|------------|------------|------------|
+| Keyword Detection | ✅ | ✅ | ✅ |
+| Semantic Understanding | ❌ | Partial | ✅ |
+| Explainable Decisions | ✅ | Partial | ✅ |
+| Evidence Generation | ❌ | ❌ | ✅ |
+| Hidden Crisis Detection | Limited | Moderate | Strong |
+| False Alarm Detection | Limited | Moderate | Strong |
 
 SIA combines multi-signal pseudo-label generation, semantic ticket understanding, and transformer-based classification to achieve superior performance while maintaining explainability.
 

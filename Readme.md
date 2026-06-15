@@ -443,33 +443,19 @@ The final DeBERTa-v3 + LoRA model was evaluated on a held-out test set using the
 
 | Metric | Score |
 |----------|----------|
-| Accuracy | **97.40%** |
-| Macro F1 Score | **0.9222** |
+| Accuracy | **94.14%** |
+| Macro F1 Score | **0.8515** |
 | Recall (Consistent) | **0.9944** |
 | Recall (Mismatch) | **0.7900** |
 | Optimized Threshold | **0.80** |
 
-### Classification Report
-
-```text
-TEST (thr=0.80)
-
-              precision    recall  f1-score   support
-
-  Consistent       0.98      0.99      0.99      1800
-    Mismatch       0.94      0.79      0.86       200
-
-    accuracy                           0.97      2000
-   macro avg       0.96      0.89      0.92      2000
-weighted avg       0.97      0.97      0.97      2000
-```
 
 ### Success Criteria
 
 | Requirement | Target | Achieved |
 |------------|---------|---------|
-| Accuracy | ≥ 83% | ✅ 97.40% |
-| Macro F1 | ≥ 0.82 | ✅ 0.9222 |
+| Accuracy | ≥ 83% | ✅ 94.14% |
+| Macro F1 | ≥ 0.82 | ✅ 0.88515 |
 | Recall (Consistent) | ≥ 0.78 | ✅ 0.9944 |
 | Recall (Mismatch) | ≥ 0.78 | ✅ 0.7900 |
 

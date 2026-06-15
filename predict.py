@@ -283,9 +283,8 @@ def main():
 
 def main():
     p = argparse.ArgumentParser()
-    # REQUIRED hata kar Colab ke liye default path daala gaya hai.
-    # Dhyan rahe: Agar aapka file name alag hai toh '/content/...' ko update kar lena.
-    p.add_argument('--input',       default='/content/customer_support_tickets.csv')
+    
+    p.add_argument('--input',       default='/data/customer_support_tickets.csv')
     p.add_argument('--output',      default='outputs')
     p.add_argument('--model-dir',   default='models/sia_model')
     p.add_argument('--threshold',   type=float, default=None)

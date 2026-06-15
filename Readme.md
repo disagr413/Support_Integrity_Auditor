@@ -375,7 +375,7 @@ Each dossier contains:
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/<your-username>/Support_Integrity_Auditor.git
+git clone https://github.com/disagr413/Support_Integrity_Auditor.git
 cd Support_Integrity_Auditor
 ```
 

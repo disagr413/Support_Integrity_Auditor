@@ -1,0 +1,22 @@
+{
+  "NLP Keywords": {
+    "spearman_rho": 0.4046,
+    "acc_within1": 0.8028,
+    "fusion_weight_pct": 33.7
+  },
+  "RT Mismatch": {
+    "spearman_rho": 0.1787,
+    "acc_within1": 0.7723,
+    "fusion_weight_pct": 6.0
+  },
+  "Lexical+Sat": {
+    "spearman_rho": 0.2046,
+    "acc_within1": 0.8064,
+    "fusion_weight_pct": 3.9
+  },
+  "Semantic Cluster": {
+    "spearman_rho": 0.4151,
+    "acc_within1": 0.8925,
+    "fusion_weight_pct": 56.4
+  }
+}

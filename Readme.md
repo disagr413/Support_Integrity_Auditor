@@ -335,20 +335,37 @@ Each dossier contains:
 
 ```text
 .
-├── train_pipeline.py
-├── predict.py
-├── app.py
-├── outputs/
-│   ├── labeled_tickets.csv
-│   ├── predictions.csv
-│   └── evidence_dossiers.json
+├── data/
+│   └── customer_support_tickets.csv
+│
 ├── models/
 │   └── sia_model/
 │       ├── best/
+│       │   ├── adapter_config.json
+│       │   ├── adapter_model.safetensors
+│       │   ├── tokenizer.json
+│       │   └── tokenizer_config.json
+│       │
+│       ├── fusion_model.pkl
+│       ├── metrics.json
 │       ├── threshold.npy
-│       └── metrics.json
-└── data/
-    └── customer_support_tickets.csv
+│       ├── tokenizer.json
+│       └── tokenizer_config.json
+│
+├── outputs/
+│   ├── ablation_table.json
+│   ├── cluster_ids.npy
+│   ├── emb_reduced.npy
+│   ├── evidence_dossiers.json
+│   ├── labeled_tickets.csv
+│   └── predictions.csv
+│
+├── app.py
+├── train_pipeline.py
+├── predict.py
+├── requirements.txt
+├── notebook.ipynb
+└── README.md
 ```
 
 ---

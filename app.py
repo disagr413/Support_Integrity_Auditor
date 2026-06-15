@@ -20,12 +20,12 @@ st.set_page_config(
 )
 
 # ---------------------------
-# Style
+# Styling
 # ---------------------------
 st.markdown(
     """
     <style>
-    .block-container { padding-top: 1.25rem; padding-bottom: 2rem; }
+    .block-container { padding-top: 1.15rem; padding-bottom: 2rem; }
     .hero {
         background: linear-gradient(135deg, rgba(224,92,42,0.16), rgba(91,143,201,0.12));
         border: 1px solid rgba(255,255,255,0.08);
@@ -60,13 +60,13 @@ st.markdown(
         background: rgba(16, 18, 24, 0.96);
         border: 1px solid rgba(255,255,255,0.08);
         border-radius: 20px;
-        padding: 1rem 1rem 0.8rem 1rem;
-        margin-top: 0.75rem;
+        padding: 1rem 1rem 0.9rem 1rem;
+        margin-top: 0.9rem;
     }
     .risk-title {
-        font-size: 1.02rem;
+        font-size: 1.04rem;
         font-weight: 700;
-        margin-bottom: 0.75rem;
+        margin-bottom: 0.8rem;
     }
     .small-muted { color: #9aa3b2; font-size: 0.88rem; }
     .card {
@@ -100,15 +100,6 @@ st.markdown(
         line-height: 1.45;
         max-height: 92px;
         overflow: hidden;
-    }
-    .rank-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.9rem;
-    }
-    .rank-table td {
-        padding: 0.55rem 0.25rem;
-        border-bottom: 1px solid rgba(255,255,255,0.06);
     }
     .rank-name { font-weight: 600; }
     .bar-wrap {
@@ -195,7 +186,7 @@ CAT_SEV = {
 }
 
 # ---------------------------
-# Helpers
+# Helper Functions
 # ---------------------------
 def rt_tier(h):
     if h <= 10:
@@ -204,13 +195,15 @@ def rt_tier(h):
         return "MID"
     return "SLOW"
 
+
 def make_input(row):
     rt = float(row.get("Resolution_Time_Hours", 30))
     return (
         f"[SUBJ] {row['Ticket_Subject']} [BODY] {row['Ticket_Description']} "
-        f"| cat:{row['Issue_Category']} | ch:{row['Ticket_Channel']} "
+        f"| cat:{row['Issue_Category']} | ch:{row.get('Ticket_Channel', 'Unknown')} "
         f"| rt:{rt_tier(rt)} | pri:{row['Priority_Level']}"
     )
+
 
 @st.cache_resource(show_spinner="Loading model…")
 def load_model():
@@ -226,12 +219,13 @@ def load_model():
     thr = float(np.load(str(tf))[0]) if tf.exists() else 0.5
     return tok, model, thr
 
+
 def predict(texts, tok, model, thr):
     device = next(model.parameters()).device
     probs = []
     for i in range(0, len(texts), 32):
         enc = tok(
-            texts[i:i+32],
+            texts[i:i + 32],
             truncation=True,
             padding="max_length",
             max_length=256,
@@ -243,6 +237,7 @@ def predict(texts, tok, model, thr):
         probs += torch.softmax(out.logits.float(), -1)[:, 1].cpu().tolist()
     probs = np.array(probs)
     return probs, (probs >= thr).astype(int)
+
 
 def dir_score(row):
     t = f"{row['Ticket_Subject']} {row['Ticket_Description']}".lower()
@@ -266,6 +261,7 @@ def dir_score(row):
         s += 0.10
     return s
 
+
 def get_verdict(row, prob):
     base = PMAP.get(row["Priority_Level"], 1)
     d = dir_score(row)
@@ -278,6 +274,7 @@ def get_verdict(row, prob):
         mtype = "Hidden Crisis"
         inf = min(3, base + bump)
     return RPMAP[inf], mtype
+
 
 def make_dossier(row, prob):
     inf, mtype = get_verdict(row, prob)
@@ -294,6 +291,7 @@ def make_dossier(row, prob):
                 "source_field": fld,
                 "weight": round(w, 3),
             })
+
     rt = float(row["Resolution_Time_Hours"])
     exp = RT_BENCH.get((row["Issue_Category"], row["Priority_Level"]), 40.0)
     r = rt / max(exp, 1)
@@ -304,6 +302,7 @@ def make_dossier(row, prob):
         "source_field": "Resolution_Time_Hours",
         "weight": round(0.25 if r < 0.4 else 0.20 if r > 2.5 else 0.05, 3),
     })
+
     cs = CAT_SEV.get(row["Issue_Category"], {"exp": "Medium", "w": 0.05, "note": ""})
     ev.append({
         "signal": "category_baseline",
@@ -311,13 +310,16 @@ def make_dossier(row, prob):
         "source_field": "Issue_Category",
         "weight": round(abs(cs["w"]), 3),
     })
+
     ev.append({
         "signal": "satisfaction_score",
         "value": str(int(row["Satisfaction_Score"])),
         "source_field": "Satisfaction_Score",
         "weight": round(0.18 if int(row["Satisfaction_Score"]) <= 2 else 0.02, 3),
     })
+
     ev = sorted(ev, key=lambda x: abs(x.get("weight", 0)), reverse=True)
+
     a = PMAP.get(row["Priority_Level"], 1)
     ii = PMAP.get(inf, 1)
     d = ii - a
@@ -328,9 +330,11 @@ def make_dossier(row, prob):
         if d < 0
         else "0 (borderline)"
     )
+
     kp = [e for e in ev if e["signal"] == "keyword" and e.get("weight", 0) > 0]
     kn = [e for e in ev if e["signal"] == "keyword" and e.get("weight", 0) < 0]
-    s1 = f"This {row['Issue_Category']} ticket via {row['Ticket_Channel']} assigned {row['Priority_Level']} — model infers {inf}."
+
+    s1 = f"This {row['Issue_Category']} ticket via {row.get('Ticket_Channel', 'Unknown')} assigned {row['Priority_Level']} — model infers {inf}."
     s2 = (
         f"Escalation indicators ({', '.join(repr(e['value']) for e in kp[:2])}) signal higher severity."
         if mtype == "Hidden Crisis" and kp
@@ -343,6 +347,7 @@ def make_dossier(row, prob):
         if mtype == "Hidden Crisis"
         else f"RT={rt:.0f}h with sat={int(row['Satisfaction_Score'])}/5 consistent with over-triage."
     )
+
     return {
         "ticket_id": str(row.get("Ticket_ID", "")),
         "assigned_priority": row["Priority_Level"],
@@ -353,6 +358,7 @@ def make_dossier(row, prob):
         "feature_evidence": ev,
         "constraint_analysis": f"{s1} {s2} {s3}",
     }
+
 
 def zplot(fig, h=380):
     fig.update_layout(
@@ -366,31 +372,6 @@ def zplot(fig, h=380):
         config={"displaylogo": False, "responsive": True, "scrollZoom": True},
     )
 
-def load_outputs():
-    pred_path = OUT / "predictions.csv"
-    dossier_path = OUT / "evidence_dossiers.json"
-    if not pred_path.exists():
-        return None, None
-    df = pd.read_csv(pred_path)
-    dossiers = []
-    if dossier_path.exists():
-        try:
-            with open(dossier_path, "r", encoding="utf-8") as f:
-                dossiers = json.load(f)
-        except Exception:
-            dossiers = []
-    return df, dossiers
-
-def ensure_cols_for_dashboard(df):
-    if "predicted" not in df.columns and "pred" in df.columns:
-        df["predicted"] = df["pred"]
-    if "verdict" not in df.columns and "predicted" in df.columns:
-        df["verdict"] = df["predicted"].map({0: "Consistent", 1: "Mismatch"})
-    if "mtype" not in df.columns and "predicted" in df.columns:
-        df["mtype"] = np.where(df["predicted"] == 1, "Mismatch", "Consistent")
-    if "delta" not in df.columns and "severity_delta" in df.columns:
-        df["delta"] = df["severity_delta"]
-    return df
 
 def card_html(title, value, sub="", accent="orange"):
     accent_class = "pill" if accent == "orange" else "pill pill-blue"
@@ -403,6 +384,7 @@ def card_html(title, value, sub="", accent="orange"):
         <div class="metric-sub">{sub}</div>
     </div>
     """
+
 
 def rank_bars(series, color="orange", max_items=8):
     if series is None or len(series) == 0:
@@ -425,6 +407,104 @@ def rank_bars(series, color="orange", max_items=8):
             """,
             unsafe_allow_html=True,
         )
+
+
+def normalize_source_columns(df):
+    if df is None or df.empty:
+        return df
+
+    rename_map = {}
+    if "label" in df.columns and "predicted" not in df.columns:
+        rename_map["label"] = "predicted"
+    if "inferred_sev" in df.columns and "inferred_severity" not in df.columns:
+        rename_map["inferred_sev"] = "inferred_severity"
+    if "mismatch_type" in df.columns and "mtype" not in df.columns:
+        rename_map["mismatch_type"] = "mtype"
+
+    if rename_map:
+        df = df.rename(columns=rename_map)
+
+    if "predicted" not in df.columns and "verdict" in df.columns:
+        df["predicted"] = df["verdict"].map({"Consistent": 0, "Mismatch": 1})
+    if "verdict" not in df.columns and "predicted" in df.columns:
+        df["verdict"] = df["predicted"].map({0: "Consistent", 1: "Mismatch"})
+    if "mtype" not in df.columns and "predicted" in df.columns:
+        df["mtype"] = np.where(df["predicted"] == 1, "Mismatch", "Consistent")
+    if "inferred_severity" not in df.columns and "mtype" in df.columns:
+        df["inferred_severity"] = np.where(df["mtype"] == "Hidden Crisis", "Higher", "Lower")
+
+    if "delta" not in df.columns and "severity_delta" in df.columns:
+        df["delta"] = df["severity_delta"]
+
+    return df
+
+
+@st.cache_data(show_spinner="Reading saved outputs…")
+def load_batch_data():
+    labeled_path = OUT / "labeled_tickets.csv"
+    pred_path = OUT / "predictions.csv"
+    dossiers_path = OUT / "evidence_dossiers.json"
+
+    labeled = None
+    preds = None
+    dossiers = []
+
+    if labeled_path.exists():
+        labeled = pd.read_csv(labeled_path)
+        labeled = normalize_source_columns(labeled)
+
+    if pred_path.exists():
+        preds = pd.read_csv(pred_path)
+        preds = normalize_source_columns(preds)
+
+    if dossiers_path.exists():
+        try:
+            with open(dossiers_path, "r", encoding="utf-8") as f:
+                dossiers = json.load(f)
+        except Exception:
+            dossiers = []
+
+    if labeled is None and preds is None:
+        return None, dossiers, "none"
+
+    if labeled is None:
+        return preds, dossiers, "predictions"
+
+    if preds is None:
+        return labeled, dossiers, "labeled"
+
+    # Merge both sources when available.
+    batch = labeled.copy()
+    batch["Ticket_ID"] = batch["Ticket_ID"].astype(str)
+    preds["Ticket_ID"] = preds["Ticket_ID"].astype(str)
+
+    # Bring in any prediction-only columns.
+    for col in preds.columns:
+        if col not in batch.columns:
+            batch[col] = np.nan
+
+    pred_map = preds.set_index("Ticket_ID")
+    batch = batch.set_index(batch["Ticket_ID"].astype(str))
+
+    for col in preds.columns:
+        if col == "Ticket_ID":
+            continue
+        if col in batch.columns:
+            batch[col] = batch.index.map(pred_map[col].to_dict()).combine_first(batch[col])
+        else:
+            batch[col] = batch.index.map(pred_map[col].to_dict())
+
+    batch = batch.reset_index(drop=True)
+    batch = normalize_source_columns(batch)
+    return batch, dossiers, "merged"
+
+
+def top_value_safe(df, col):
+    if df is None or df.empty or col not in df.columns:
+        return "-"
+    vc = df[col].dropna().astype(str).value_counts()
+    return vc.idxmax() if len(vc) else "-"
+
 
 # ---------------------------
 # App
@@ -451,7 +531,7 @@ if not model_ready:
 tab1, tab2, tab3 = st.tabs(["🎫 Single Ticket", "🚨 Intelligence Center", "📊 Executive Dashboard"])
 
 # ---------------------------
-# Tab 1
+# Tab 1 — Single Ticket
 # ---------------------------
 with tab1:
     st.subheader("Analyse a Single Ticket")
@@ -507,24 +587,27 @@ with tab1:
             st.success(f"Priority **{priority}** appears correctly assigned. (confidence mismatch: {prob:.1%})")
 
 # ---------------------------
-# Tab 2
+# Tab 2 — Intelligence Center
 # ---------------------------
 with tab2:
     st.subheader("Intelligence Center")
 
-    batch_df, dossiers = load_outputs()
+    batch_df, dossiers, source_mode = load_batch_data()
     if batch_df is None:
-        st.info("Train and run prediction first so this panel can read `outputs/predictions.csv` and `outputs/evidence_dossiers.json`.")
+        st.info("I could not find `outputs/labeled_tickets.csv` or `outputs/predictions.csv`. Run the pipeline first.")
     else:
-        batch_df = ensure_cols_for_dashboard(batch_df)
+        batch_df = normalize_source_columns(batch_df)
 
         flagged = batch_df[batch_df["predicted"] == 1].copy() if "predicted" in batch_df.columns else batch_df.iloc[0:0].copy()
         hidden = flagged[flagged["mtype"] == "Hidden Crisis"].copy() if "mtype" in flagged.columns else flagged.iloc[0:0].copy()
         falsea = flagged[flagged["mtype"] == "False Alarm"].copy() if "mtype" in flagged.columns else flagged.iloc[0:0].copy()
 
-        top_cat = flagged["Issue_Category"].value_counts().idxmax() if not flagged.empty else "-"
-        top_ch = flagged["Ticket_Channel"].value_counts().idxmax() if not flagged.empty else "-"
-        avg_conf = float(flagged["prob"].mean()) * 100 if not flagged.empty else 0.0
+        top_cat = top_value_safe(flagged, "Issue_Category")
+        top_ch = top_value_safe(flagged, "Ticket_Channel")
+        avg_conf = float(flagged["prob"].mean()) * 100 if not flagged.empty and "prob" in flagged.columns else 0.0
+
+        mode_label = {"merged": "Using both saved CSVs", "labeled": "Using labeled_tickets.csv", "predictions": "Using predictions.csv"}.get(source_mode, "Using saved outputs")
+        st.caption(mode_label)
 
         st.markdown("### Executive Briefing")
         k1, k2, k3, k4, k5 = st.columns(5)
@@ -533,7 +616,7 @@ with tab2:
         with k2:
             st.markdown(card_html("False Alarms", f"{len(falsea):,}", "Over-prioritised tickets", accent="blue"), unsafe_allow_html=True)
         with k3:
-            st.markdown(card_html("Flagged Total", f"{len(flagged):,}", f"of {len(batch_df):,} tickets"), unsafe_allow_html=True)
+            st.markdown(card_html("Flagged Total", f"{len(flagged):,}", f"of {len(batch_df):,} tickets", accent="orange"), unsafe_allow_html=True)
         with k4:
             st.markdown(card_html("Top Category", top_cat, "Highest mismatch concentration", accent="blue"), unsafe_allow_html=True)
         with k5:
@@ -541,7 +624,6 @@ with tab2:
 
         st.markdown('<div class="section-card">', unsafe_allow_html=True)
         st.markdown('<div class="risk-title">Most Dangerous Hidden Crises</div>', unsafe_allow_html=True)
-
         if hidden.empty:
             st.info("No hidden crises available.")
         else:
@@ -549,21 +631,22 @@ with tab2:
             cols = st.columns(2)
             for i, (_, r) in enumerate(top_hidden.iterrows()):
                 with cols[i % 2]:
+                    desc_txt = str(r["Ticket_Description"])[:220] if "Ticket_Description" in r.index else "Description unavailable in this CSV."
                     st.markdown(
                         f"""
                         <div class="card">
                             <div class="card-topline">
                                 <div class="pill">Hidden Crisis</div>
-                                <div class="pill pill-blue">{r.get('prob', 0)*100:.1f}%</div>
+                                <div class="pill pill-blue">{float(r.get('prob', 0))*100:.1f}%</div>
                             </div>
                             <div class="ticket-id">{r['Ticket_ID']}</div>
                             <div class="ticket-meta">
-                                Assigned: <b>{r['Priority_Level']}</b><br/>
-                                Inferred: <b>{r.get('inferred_severity', '—')}</b><br/>
-                                Category: <b>{r['Issue_Category']}</b><br/>
-                                Channel: <b>{r['Ticket_Channel']}</b>
+                                Assigned: <b>{r.get('Priority_Level', '—')}</b><br/>
+                                Inferred: <b>{r.get('inferred_severity', r.get('inferred_sev', '—'))}</b><br/>
+                                Category: <b>{r.get('Issue_Category', '—')}</b>
+                                {"<br/>Channel: <b>" + str(r['Ticket_Channel']) + "</b>" if 'Ticket_Channel' in r.index else ""}
                             </div>
-                            <div class="ticket-desc">{str(r['Ticket_Description'])[:220]}</div>
+                            <div class="ticket-desc">{desc_txt}</div>
                         </div>
                         """,
                         unsafe_allow_html=True,
@@ -572,7 +655,6 @@ with tab2:
 
         st.markdown('<div class="section-card">', unsafe_allow_html=True)
         st.markdown('<div class="risk-title">Resource Waste Alerts</div>', unsafe_allow_html=True)
-
         if falsea.empty:
             st.info("No false alarms available.")
         else:
@@ -580,21 +662,22 @@ with tab2:
             cols = st.columns(2)
             for i, (_, r) in enumerate(top_false.iterrows()):
                 with cols[i % 2]:
+                    desc_txt = str(r["Ticket_Description"])[:220] if "Ticket_Description" in r.index else "Description unavailable in this CSV."
                     st.markdown(
                         f"""
                         <div class="card">
                             <div class="card-topline">
                                 <div class="pill pill-blue">False Alarm</div>
-                                <div class="pill">{r.get('prob', 0)*100:.1f}%</div>
+                                <div class="pill">{float(r.get('prob', 0))*100:.1f}%</div>
                             </div>
                             <div class="ticket-id">{r['Ticket_ID']}</div>
                             <div class="ticket-meta">
-                                Assigned: <b>{r['Priority_Level']}</b><br/>
-                                Inferred: <b>{r.get('inferred_severity', '—')}</b><br/>
-                                Category: <b>{r['Issue_Category']}</b><br/>
-                                Channel: <b>{r['Ticket_Channel']}</b>
+                                Assigned: <b>{r.get('Priority_Level', '—')}</b><br/>
+                                Inferred: <b>{r.get('inferred_severity', r.get('inferred_sev', '—'))}</b><br/>
+                                Category: <b>{r.get('Issue_Category', '—')}</b>
+                                {"<br/>Channel: <b>" + str(r['Ticket_Channel']) + "</b>" if 'Ticket_Channel' in r.index else ""}
                             </div>
-                            <div class="ticket-desc">{str(r['Ticket_Description'])[:220]}</div>
+                            <div class="ticket-desc">{desc_txt}</div>
                         </div>
                         """,
                         unsafe_allow_html=True,
@@ -602,20 +685,25 @@ with tab2:
         st.markdown('</div>', unsafe_allow_html=True)
 
         c1, c2 = st.columns([1.05, 0.95])
-
         with c1:
             st.markdown("### Risk Leaderboard")
-            cat_scores = flagged.groupby("Issue_Category")["predicted"].mean().sort_values() * 100 if not flagged.empty else pd.Series(dtype=float)
-            rank_bars(cat_scores, color="orange", max_items=10)
+            if not flagged.empty and "Issue_Category" in flagged.columns:
+                cat_scores = flagged.groupby("Issue_Category")["predicted"].mean().sort_values() * 100
+                rank_bars(cat_scores, color="orange", max_items=10)
+            else:
+                st.info("No category data available.")
 
         with c2:
             st.markdown("### Channel Risk Leaderboard")
-            ch_scores = flagged.groupby("Ticket_Channel")["predicted"].mean().sort_values() * 100 if not flagged.empty else pd.Series(dtype=float)
-            rank_bars(ch_scores, color="blue", max_items=10)
+            if not flagged.empty and "Ticket_Channel" in flagged.columns:
+                ch_scores = flagged.groupby("Ticket_Channel")["predicted"].mean().sort_values() * 100
+                rank_bars(ch_scores, color="blue", max_items=10)
+            else:
+                st.info("Channel data not present in this CSV.")
 
         st.markdown("### Escalation Hotspots")
-        if flagged.empty:
-            st.info("No flagged tickets to map.")
+        if flagged.empty or "Ticket_Channel" not in flagged.columns:
+            st.info("Hotspot map needs Ticket_Channel data.")
         else:
             hotspot = (
                 flagged.groupby(["Issue_Category", "Ticket_Channel"], dropna=False)["predicted"]
@@ -638,10 +726,11 @@ with tab2:
             st.info("No tickets in the investigation queue.")
         else:
             queue_cols = [
-                "Ticket_ID", "Priority_Level", "Issue_Category", "Ticket_Channel",
-                "prob", "mtype", "inferred_severity"
+                c for c in [
+                    "Ticket_ID", "Priority_Level", "Issue_Category", "Ticket_Channel",
+                    "prob", "mtype", "inferred_severity", "inferred_sev", "verdict"
+                ] if c in flagged.columns
             ]
-            queue_cols = [c for c in queue_cols if c in flagged.columns]
             qdf = flagged.sort_values("prob", ascending=False)[queue_cols].copy()
             if "prob" in qdf.columns:
                 qdf["prob"] = (qdf["prob"] * 100).round(1).astype(str) + "%"
@@ -651,11 +740,16 @@ with tab2:
                 "Open a ticket for full evidence",
                 options=flagged["Ticket_ID"].astype(str).tolist(),
             )
-            chosen = flagged[flagged["Ticket_ID"].astype(str) == str(chosen_id)].iloc[0].to_dict()
-            chosen_prob = float(chosen.get("prob", 0.5))
+            chosen_row = flagged[flagged["Ticket_ID"].astype(str) == str(chosen_id)].iloc[0].to_dict()
+            chosen_prob = float(chosen_row.get("prob", 0.5))
             dossier = next((d for d in dossiers if str(d.get("ticket_id")) == str(chosen_id)), None)
-            if dossier is None:
-                dossier = make_dossier(chosen, chosen_prob)
+            if dossier is None and {"Ticket_Subject", "Ticket_Description"}.issubset(chosen_row.keys()):
+                dossier = make_dossier(chosen_row, chosen_prob)
+            elif dossier is None:
+                dossier = {
+                    "ticket_id": chosen_id,
+                    "note": "Evidence dossier not available for this row in the saved JSON."
+                }
 
             with st.expander("Selected Ticket Evidence Dossier", expanded=True):
                 st.json(dossier)
@@ -677,14 +771,14 @@ with tab2:
                     f"{len(hidden):,}",
                     f"{len(falsea):,}",
                     top_cat,
-                    top_ch,
+                    top_ch if top_ch != "-" else "Not available",
                 ],
             }
         )
         st.dataframe(summary, use_container_width=True, hide_index=True)
 
 # ---------------------------
-# Tab 3
+# Tab 3 — Executive Dashboard
 # ---------------------------
 with tab3:
     st.subheader("Executive Dashboard")
@@ -693,29 +787,21 @@ with tab3:
     if "batch_df" in st.session_state:
         src = st.session_state["batch_df"]
     else:
-        lab = OUT / "labeled_tickets.csv"
-        if lab.exists():
-            src = pd.read_csv(lab)
-            if "predicted" not in src.columns and "label" in src.columns:
-                src["predicted"] = src["label"]
-            if "verdict" not in src.columns and "predicted" in src.columns:
-                src["verdict"] = src["predicted"].map({0: "Consistent", 1: "Mismatch"})
-            if "mtype" not in src.columns and "mismatch_type" in src.columns:
-                src["mtype"] = src["mismatch_type"]
-            if "delta" not in src.columns and "severity_delta" in src.columns:
-                src["delta"] = src["severity_delta"]
+        src, _, _ = load_batch_data()
+        if src is not None:
+            src = normalize_source_columns(src)
 
     if src is None:
         st.info("Run training and batch prediction first to populate this dashboard.")
     else:
-        src = ensure_cols_for_dashboard(src)
+        src = normalize_source_columns(src)
         n_tot = len(src)
         n_mis = int(src["predicted"].sum()) if "predicted" in src.columns else 0
         hc = int(src[src.get("mtype", "") == "Hidden Crisis"].shape[0]) if "mtype" in src.columns else 0
 
         a, b, c = st.columns(3)
         a.markdown(card_html("Total Tickets", f"{n_tot:,}", "All analysed tickets", accent="blue"), unsafe_allow_html=True)
-        b.markdown(card_html("Flagged Mismatches", f"{n_mis:,}", f"{(n_mis/n_tot*100):.1f}%" if n_tot else "0%", accent="orange"), unsafe_allow_html=True)
+        b.markdown(card_html("Flagged Mismatches", f"{n_mis:,}", f"{(n_mis / n_tot * 100):.1f}%" if n_tot else "0%", accent="orange"), unsafe_allow_html=True)
         c.markdown(card_html("Hidden Crisis", f"{hc:,}", "Under-prioritised cases", accent="orange"), unsafe_allow_html=True)
 
         st.divider()
@@ -742,7 +828,7 @@ with tab3:
 
         with right:
             st.markdown("### Mismatch Rate by Category")
-            if "predicted" in src.columns:
+            if "predicted" in src.columns and "Issue_Category" in src.columns:
                 grp = src.groupby("Issue_Category")["predicted"].mean().sort_values(ascending=True) * 100
                 fig = px.bar(
                     x=grp.values,
@@ -760,7 +846,7 @@ with tab3:
         c1, c2 = st.columns(2)
         with c1:
             st.markdown("### Severity Delta Heatmap")
-            if "delta" in src.columns:
+            if "delta" in src.columns and "Ticket_Channel" in src.columns:
                 pivot = src.pivot_table(
                     values="delta",
                     index="Issue_Category",
@@ -777,6 +863,8 @@ with tab3:
                 )
                 fig.update_layout(autosize=True, height=480)
                 zplot(fig, h=480)
+            elif "delta" in src.columns:
+                st.info("Channel column unavailable for heatmap in this CSV.")
 
         with c2:
             st.markdown("### Evidence Signal Frequency")
@@ -812,7 +900,7 @@ with tab3:
 
         st.divider()
         st.markdown("### Category × Channel Risk Map")
-        if "predicted" in src.columns:
+        if "predicted" in src.columns and "Ticket_Channel" in src.columns:
             heat = (
                 src.groupby(["Issue_Category", "Ticket_Channel"], dropna=False)["predicted"]
                 .mean()
@@ -828,6 +916,8 @@ with tab3:
                     color_continuous_scale="RdYlGn_r",
                 )
                 zplot(fig, h=520)
+        else:
+            st.info("Category × Channel risk map needs Ticket_Channel data.")
 
 st.divider()
 st.caption("SIA · MARS Open Projects 2026 · DeBERTa-v3-small + LoRA · Intelligence-centered UI")

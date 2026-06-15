@@ -373,7 +373,7 @@ Each dossier contains:
 # Installation
 
 ```bash
-git clone <repository-url>
+git clone [Support_Integrity_Auditor](https://github.com/disagr413/Support_Integrity_Auditor.git)
 
 cd support-integrity-auditor
 ```
